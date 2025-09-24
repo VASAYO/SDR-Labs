@@ -3,8 +3,8 @@
     clc; clear; close all;
 
 % Считываем аудиофайл
-    [RawData, Fs] = audioread("C:\Users\user\Documents\SDR-Labs\" + ...
-        "Source_sound.mp3");
+    [RawData, Fs] = audioread("C:\Users\VIVADO\Documents\Polytech\" + ...
+        "Магистратура\SDR course\SDR-Labs\Source_sound.mp3");
 
 % Преобразуем в моно
     DataMono = sum(RawData, 2)/2;
@@ -24,7 +24,6 @@
     clear DataCut
 
 % Повышаем частоту дискретизации
-    ResampFactor = 10e6/200e3;
     IQResamp = ResamplingFun(IQRaw, 200e3, 10e6);
     clear IQRaw
 
@@ -39,7 +38,7 @@
 % Формируем .bin файл с отсчётами сигнала
     IQPrepared4Tx = [real(IQScaled), imag(IQScaled)].';
 
-    fid = fopen("C:\Users\user\Documents\SDR-Labs\TxData.bin", "w");
+    fid = fopen("C:\Users\VIVADO\Documents\Polytech\Магистратура\SDR course\SDR-Labs\TxData.bin", "w");
     fwrite(fid, IQPrepared4Tx(:), "int8");
     fclose(fid);
 
