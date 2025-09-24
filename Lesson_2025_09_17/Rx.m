@@ -1,0 +1,13 @@
+[y, fs] = audioread("C:\Users\VIVADO\Documents\Polytech\Магистратура\SDR course\Lesson_2025_09_17\IQ\2025_09_17\13-08-04_100000000Hz.wav");
+baseband = y(:,1) + 1i*y(:,2);
+pwelch(baseband, [], [], [], 'centered');
+f_int = -1e6;
+fm_baseband_99mhz = baseband .* exp(1i*2*pi*-1*f_int*(0:length(baseband)-1)/fs).';
+decimation_factor = fs/200e3;
+decimated_fm_sig = decimate(fm_baseband_99mhz, decimation_factor, "fir");
+fs_new = fs/decimation_factor;
+pwelch(decimated_fm_sig, [], [], [], 'centered');
+plot(real(decimated_fm_sig));
+hDem = comm.FMDemodulator("FrequencyDeviation", 75e3, "SampleRate", fs_new);
+audiosig = hDem(decimated_fm_sig);
+sound(audiosig, fs_new);
