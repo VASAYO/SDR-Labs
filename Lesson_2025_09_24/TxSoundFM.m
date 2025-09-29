@@ -38,7 +38,8 @@
 % Формируем .bin файл с отсчётами сигнала
     IQPrepared4Tx = [real(IQScaled), imag(IQScaled)].';
 
-    fid = fopen("C:\Users\VIVADO\Documents\Polytech\Магистратура\SDR course\SDR-Labs\TxData.bin", "w");
+    fid = fopen("C:\Users\VIVADO\Documents\Polytech\Магистратура\" + ...
+        "SDR course\SDR-Labs\TxData.bin", "w");
     fwrite(fid, IQPrepared4Tx(:), "int8");
     fclose(fid);
 
