@@ -4,8 +4,8 @@
 % Параметры 
     % Путь к файлу записи
         SourcePath = "C:\Users\VIVADO\Documents\Polytech\" + ...
-            "Магистратура\SDR course\Lesson_2025_09_24\IQ" + ...
-            "\2025_09_24\12-52-52_450000000Hz.wav";
+            "Магистратура\SDR course\SDR-Labs\Records\IQ\" + ...
+            "2025_09_24\12-52-52_450000000Hz.wav";
 
     % Частота дискретизации
         Fs = 8e6;
@@ -29,3 +29,7 @@
     IQDown = ResamplingFun(IQShift, Fs, Fs1);
 
 % Детектируем аудиосигнал
+    Audio = diff(unwrap(angle(IQDown)));
+    AudioDown = ResamplingFun(Audio, Fs1, 44100);
+
+    sound(AudioDown, 44100);
