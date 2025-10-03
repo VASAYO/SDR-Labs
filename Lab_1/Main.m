@@ -9,7 +9,6 @@ addpath('../Lib/');
 % Параметры 
     % Путь к файлу записи
         SourcePath = "C:\Users\VIVADO\Documents\Polytech\Магистратура\SDR course\SDR-Labs\Records\IQ\2025_10_01\12-46-56_101300000Hz.wav";
-
     % Частота дискретизации
         Fs = [];
     % ЧД после понижения
@@ -19,27 +18,30 @@ addpath('../Lib/');
     % Частота сигнала
         F_rec = 102e6;
 
-% Считываем запись с файла
+
+% Считывание запись с файла
     [RawData, Fs] = audioread(SourcePath);
 
-% Формируем IQ
+% Формирование IQ
     IQRaw = RawData(:, 1) + 1j * RawData(:, 2);
 
 % Перенос сигнала на нулевую частоту
     IQShift = IQRaw .* exp(-1j * 2*pi*(F_rec-F0) * (0:length(IQRaw)-1)'/Fs);
 
-% Понижаем ЧД
+% Понижение ЧД
     IQDown = ResamplingFun(IQShift, Fs, Fs1);
 
-% Детектируем аудиосигнал
+% Детектирование аудиосигнала
     ModSignal = diff(unwrap(angle(IQDown)));
 
-% Фильтруем пилотный тон
-    fft_tmp = fftshift(fft(ModSignal));
-    f = Generete_Freq_Axis_FFT(length(fft_tmp), Fs1);
-    fft_tmp(abs(f - 19e3) > 10 & abs(f + 19e3) > 10) = 0;
+% Фильтрация пилотного тона
+    Tone_19kHz = Bandpass_FFT_Filter(ModSignal, Fs1, 19e3, 10);
 
-    Tone_19kHz = ifft(ifftshift(fft_tmp));
-    clear f fft_tmp;
+% Получение пилотного тона с удвоенной частотой
+    Tone_38kHz = Tone_19kHz .^2;
+    Tone_38kHz = Bandpass_FFT_Filter(Tone_38kHz, Fs1, 38e3, 10);
 
-% 
+% Перенос разностного канала на нулевую частоту с использованием пилотного
+% тона с последующей фильтрацией 
+    LRDiff = Bandpass_FFT_Filter(ModSignal, Fs1, 38e3, 15e3) .* Tone_38kHz;
+    
