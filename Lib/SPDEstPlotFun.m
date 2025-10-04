@@ -22,7 +22,7 @@ function SPDEstPlotFun(Data, SampFreq, WelchSize)
     % Создание и настройка рисунка
         plot(XData, 10*log10(YData));
         grid on;
-        xlabel('Частота, Гц');
-        ylabel('СПСМ');
+        xlabel('Frequency, Hz');
+        ylabel('SPD');
 end
 
