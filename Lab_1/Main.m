@@ -6,8 +6,7 @@ addpath('../Lib/');
 
 % Параметры 
     % Путь к файлу записи
-        SourcePath = "C:\Users\VIVADO\Documents\Polytech\" + ...
-            "Магистратура\SDR course\SDR-Labs\Records\IQ\" + ...
+        SourcePath = ".\..\Records\IQ\" + ...
             "2025_09_17\13-08-04_100000000Hz.wav";
     % Частота дискретизации
         Fs = [];

@@ -1,4 +1,4 @@
-[y, fs] = audioread("C:\Users\VIVADO\Documents\Polytech\Магистратура\SDR course\Lesson_2025_09_17\IQ\2025_09_17\13-08-04_100000000Hz.wav");
+[y, fs] = audioread(".\..\Records\IQ\2025_09_17\13-08-04_100000000Hz.wav");
 baseband = y(:,1) + 1i*y(:,2);
 pwelch(baseband, [], [], [], 'centered');
 f_int = -1e6;

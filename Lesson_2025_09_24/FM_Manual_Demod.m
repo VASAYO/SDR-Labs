@@ -3,8 +3,7 @@
 
 % Параметры 
     % Путь к файлу записи
-        SourcePath = "C:\Users\VIVADO\Documents\Polytech\" + ...
-            "Магистратура\SDR course\SDR-Labs\Records\IQ\" + ...
+        SourcePath = ".\..\Records\IQ\" + ...
             "2025_09_24\12-52-52_450000000Hz.wav";
 
     % Частота дискретизации

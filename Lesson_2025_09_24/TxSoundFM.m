@@ -3,8 +3,7 @@
     clc; clear; close all;
 
 % Считываем аудиофайл
-    [RawData, Fs] = audioread("C:\Users\VIVADO\Documents\Polytech\" + ...
-        "Магистратура\SDR course\SDR-Labs\Source_sound.mp3");
+    [RawData, Fs] = audioread(".\..\Records\Source_sound.mp3");
 
 % Преобразуем в моно
     DataMono = sum(RawData, 2)/2;
