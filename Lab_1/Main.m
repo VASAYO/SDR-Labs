@@ -4,7 +4,7 @@
 
 addpath('../Lib/');
 
-% Параметры 
+% Параметры (все параметры указаны в системе СИ)
     % Путь к файлу записи
         SourcePath = ".\..\Records\IQ\" + ...
             "2025_09_17\13-08-04_100000000Hz.wav";
@@ -18,6 +18,8 @@ addpath('../Lib/');
         F_rec = 101.4e6;
     % Девиация частоты
         fd = 75e3;
+    % Постоянная времени фильтра предыскажения
+        tau = 50e-6;
 
 
 % Считывание запись с файла
@@ -36,17 +38,26 @@ addpath('../Lib/');
     ModSignal = 1/(2*pi*fd) * ...
         angle(IQDown(2:end) .* conj(IQDown(1:end-1))) * Fs1;
 
+% Устранение предыскажения
+    % Синтез ЦФ на основе билинейного преобразования от аналоговой
+    % интегрирующей RC-цепочки
+        DeEmphasis_B = [1/(1+2*Fs1*tau), 1/(1+2*Fs1*tau)];
+        DeEmphasis_A = [1, (1-2*Fs1*tau)/(1+2*Fs1*tau)];
+
+    % Фильтрация
+        DeEmphasisSignal = filter(DeEmphasis_B, DeEmphasis_A, ModSignal);
+
 % Фильтрация компоненты L+R
     load("Filt1.mat");
-    LRSum = filter(Filt1, 1, ModSignal);
+    LRSum = filter(Filt1, 1, DeEmphasisSignal);
 
 % Фильтрация компоненты L-R
     load("Filt3.mat");
-    LRDiff = filter(Filt3, 1, ModSignal);
+    LRDiff = filter(Filt3, 1, DeEmphasisSignal);
 
 % Фильтрация пилотного тона
     load("Filt2.mat")
-    Tone_19kHz = filter(Filt2, 1, ModSignal);
+    Tone_19kHz = filter(Filt2, 1, DeEmphasisSignal);
 
 % Получение пилотного тона с удвоенной частотой
     Tone_38kHz = Tone_19kHz .^2;
