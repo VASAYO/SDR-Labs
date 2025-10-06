@@ -15,7 +15,7 @@ addpath('../Lib/');
     % Центральная частота записи
         F0 = 100e6;
     % Частота сигнала
-        F_rec = 101.4e6;
+        F_rec = 97e6;
     % Девиация частоты
         fd = 75e3;
     % Постоянная времени фильтра предыскажения
@@ -38,17 +38,30 @@ addpath('../Lib/');
     ModSignal = 1/(2*pi*fd) * ...
         angle(IQDown(2:end) .* conj(IQDown(1:end-1))) * Fs1;
 
+% Устранение предыскажения
+    % Коррекция постоянной времени фильтра для устранения преобразования
+    % частотной оси при билинейном преобразовании
+        tauCorr = (2*Fs1 * tan(tau^-1/Fs1 / 2))^-1;
+
+    % Синтез ЦФ на основе билинейного преобразования от аналоговой
+    % интегрирующей RC-цепочки
+        DeEmphasis_B = [1/(1+2*Fs1*tauCorr), 1/(1+2*Fs1*tauCorr)];
+        DeEmphasis_A = [1, (1-2*Fs1*tauCorr)/(1+2*Fs1*tauCorr)];
+
+    % Фильтрация
+        DeEmphasis = filter(DeEmphasis_B, DeEmphasis_A, ModSignal);
+
 % Фильтрация компоненты L+R
     load("Filt1.mat");
-    LRSum = filter(Filt1, 1, ModSignal);
+    LRSum = filter(Filt1, 1, DeEmphasis);
 
 % Фильтрация компоненты L-R
     load("Filt3.mat");
-    LRDiffRaw = filter(Filt3, 1, ModSignal);
+    LRDiffRaw = filter(Filt3, 1, DeEmphasis);
 
 % Фильтрация пилотного тона
     load("Filt2.mat")
-    Tone_19kHz = filter(Filt2, 1, ModSignal);
+    Tone_19kHz = filter(Filt2, 1, DeEmphasis);
 
 % Получение пилотного тона с удвоенной частотой
     Tone_38kHz = Tone_19kHz .^2;
@@ -73,19 +86,6 @@ addpath('../Lib/');
 
     Stereo = [Left, Right];
 
-% Устранение предыскажения
-    % Коррекция постоянной времени фильтра для устранения преобразования
-    % частотной оси при билинейном преобразовании
-        tauCorr = (2*Fs1 * tan(tau^-1/Fs1 / 2))^-1;
-
-    % Синтез ЦФ на основе билинейного преобразования от аналоговой
-    % интегрирующей RC-цепочки
-        DeEmphasis_B = [1/(1+2*Fs1*tauCorr), 1/(1+2*Fs1*tauCorr)];
-        DeEmphasis_A = [1, (1-2*Fs1*tauCorr)/(1+2*Fs1*tauCorr)];
-
-    % Фильтрация
-        DeEmphasisStereo = filter(DeEmphasis_B, DeEmphasis_A, Stereo, [], 1);
-
 % Проигрывание звука
-    sound(DeEmphasisStereo, Fs1);
+    sound(Stereo, Fs1);
     
