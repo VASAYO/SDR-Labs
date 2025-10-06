@@ -38,26 +38,26 @@ addpath('../Lib/');
     ModSignal = 1/(2*pi*fd) * ...
         angle(IQDown(2:end) .* conj(IQDown(1:end-1))) * Fs1;
 
-% Устранение предыскажения
-    % Синтез ЦФ на основе билинейного преобразования от аналоговой
-    % интегрирующей RC-цепочки
-        DeEmphasis_B = [1/(1+2*Fs1*tau), 1/(1+2*Fs1*tau)];
-        DeEmphasis_A = [1, (1-2*Fs1*tau)/(1+2*Fs1*tau)];
-
-    % Фильтрация
-        DeEmphasisSignal = filter(DeEmphasis_B, DeEmphasis_A, ModSignal);
+% % Устранение предыскажения
+%     % Синтез ЦФ на основе билинейного преобразования от аналоговой
+%     % интегрирующей RC-цепочки
+%         DeEmphasis_B = [1/(1+2*Fs1*tau), 1/(1+2*Fs1*tau)];
+%         DeEmphasis_A = [1, (1-2*Fs1*tau)/(1+2*Fs1*tau)];
+% 
+%     % Фильтрация
+%         DeEmphasisSignal = filter(DeEmphasis_B, DeEmphasis_A, ModSignal);
 
 % Фильтрация компоненты L+R
     load("Filt1.mat");
-    LRSum = filter(Filt1, 1, DeEmphasisSignal);
+    LRSum = filter(Filt1, 1, ModSignal);
 
 % Фильтрация компоненты L-R
     load("Filt3.mat");
-    LRDiff = filter(Filt3, 1, DeEmphasisSignal);
+    LRDiffRaw = filter(Filt3, 1, ModSignal);
 
 % Фильтрация пилотного тона
     load("Filt2.mat")
-    Tone_19kHz = filter(Filt2, 1, DeEmphasisSignal);
+    Tone_19kHz = filter(Filt2, 1, ModSignal);
 
 % Получение пилотного тона с удвоенной частотой
     Tone_38kHz = Tone_19kHz .^2;
@@ -73,8 +73,8 @@ addpath('../Lib/');
 
 % Перенос разностного канала на нулевую частоту с использованием пилотного
 % тона с последующей фильтрацией 
-    LRDiff = LRDiff .* Tone_38kHz;
-    LRDiff = filter(Filt1, 1, LRDiff);
+    LRDiffShift = LRDiffRaw .* Tone_38kHz;
+    LRDiff = filter(Filt1, 1, LRDiffShift);
 
 % Выделение левого и правого каналов
     Left = LRDiff + LRSum;
