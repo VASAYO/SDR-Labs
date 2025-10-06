@@ -38,15 +38,6 @@ addpath('../Lib/');
     ModSignal = 1/(2*pi*fd) * ...
         angle(IQDown(2:end) .* conj(IQDown(1:end-1))) * Fs1;
 
-% % Устранение предыскажения
-%     % Синтез ЦФ на основе билинейного преобразования от аналоговой
-%     % интегрирующей RC-цепочки
-%         DeEmphasis_B = [1/(1+2*Fs1*tau), 1/(1+2*Fs1*tau)];
-%         DeEmphasis_A = [1, (1-2*Fs1*tau)/(1+2*Fs1*tau)];
-% 
-%     % Фильтрация
-%         DeEmphasisSignal = filter(DeEmphasis_B, DeEmphasis_A, ModSignal);
-
 % Фильтрация компоненты L+R
     load("Filt1.mat");
     LRSum = filter(Filt1, 1, ModSignal);
@@ -82,6 +73,19 @@ addpath('../Lib/');
 
     Stereo = [Left, Right];
 
+% Устранение предыскажения
+    % Коррекция постоянной времени фильтра для устранения преобразования
+    % частотной оси при билинейном преобразовании
+        tauCorr = (2*Fs1 * tan(tau^-1/Fs1 / 2))^-1;
+
+    % Синтез ЦФ на основе билинейного преобразования от аналоговой
+    % интегрирующей RC-цепочки
+        DeEmphasis_B = [1/(1+2*Fs1*tauCorr), 1/(1+2*Fs1*tauCorr)];
+        DeEmphasis_A = [1, (1-2*Fs1*tauCorr)/(1+2*Fs1*tauCorr)];
+
+    % Фильтрация
+        DeEmphasisStereo = filter(DeEmphasis_B, DeEmphasis_A, Stereo, [], 1);
+
 % Проигрывание звука
-    sound(Stereo, Fs1);
+    sound(DeEmphasisStereo, Fs1);
     
