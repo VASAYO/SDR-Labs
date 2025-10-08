@@ -82,10 +82,9 @@ addpath('../Lib/');
 
 % Выделение левого и правого каналов
     Left = LRDiff + LRSum;
-    Right = LRDiff - LRSum;
+    Right = -LRDiff + LRSum;
 
     Stereo = [Left, Right];
 
 % Проигрывание звука
     sound(Stereo, Fs1);
-    
