@@ -72,14 +72,16 @@ addpath('../Lib/');
 % Параметры RRC
     beta = 0.5;
     span = 10;
-    sps = 2;
+    sps = 20;
 % Число передаваемых в пакете бит
     BitsPerPackage = 1024;
+% Длина синхропоследовательности
+    PreambleLen = 2^7 - 1;
 % Нужно ли сохранять отсчёты сигнала в файл
-    NeedSaveTxSignal = 1;
+    NeedSaveTxSignal = 0;
 % Отстройка частоты и фазы сигнала
-    fOffset = 40e3*rand() - 20e3;
-    phiOffset = 2*pi*rand();
+    fOffset = (40e3*rand() - 20e3) * 0;
+    phiOffset = 2*pi*rand() - pi;
 % Отношение энергии бита к дисперсии шума, дБ
     EbNo = 10;
 % Энергия бита (QPSK)
@@ -104,7 +106,7 @@ addpath('../Lib/');
 % Маппинг бит
     Symbols = pskmod(InputData, 4, pi/4, "gray", "InputType", "bit");
 % Синхропоследовательность
-    SyncSeq = (1 + 1j) * mlseq(2^7 - 1);
+    SyncSeq = (1 + 1j) * mlseq(PreambleLen);
 
 % Объединение символов информационной последовательности и
 % синхропоследовательности
@@ -118,13 +120,13 @@ addpath('../Lib/');
     if NeedSaveTxSignal
         % Повышение частоты дискретизации до рабочей в SDR
             if Fs < 10e6
-                Buf = ResamplingFun(TxSignal, Fs, 10e6);
+                FreqOffsetInd = ResamplingFun(TxSignal, Fs, 10e6);
             else
-                Buf = TxSignal;
+                FreqOffsetInd = TxSignal;
             end
 
-        IQ2BinInt8(Buf, '..\Records\Lab_2_TxSig.bin');
-        clear Buf;
+        IQ2BinInt8(FreqOffsetInd, '.\..\Records\Lab_2_TxSig.bin');
+        clear FreqOffsetInd;
     end
 
 %% Канал передачи
@@ -147,4 +149,43 @@ addpath('../Lib/');
 % Согласованная фильтрация
     FSignal = conv(RxSignal, RRC);
 
-% Синхронизация с началом пакета
+% Поиск НОМЕРА ОТСЧЁТА СИГНАЛА, С КОТОРОГО НАЧИНАЕТСЯ ПАКЕТ
+    % Сетка частотных отстроек
+        fVals = (0:3480:20e3);
+        fVals = [fliplr(-fVals(2:end)) fVals];
+
+    % Набор опорных последовательностей с разными частотными сдвигами
+        RefSeqs = zeros(length(SyncSeq) * sps, length(fVals));
+
+        for i = 1:length(fVals)
+            RefSeqs(:, i) = upsample(SyncSeq, sps) .* ...
+                exp(1j*2*pi*fVals(i) * (0:length(SyncSeq)*sps-1)' * Ts);
+        end
+        
+    % Корреляция принятого сигнала с опорными последовательностями
+        corrRes = zeros(length(FSignal)-size(RefSeqs, 1)+1, length(fVals));
+
+        for i = 1:length(fVals)
+            corrRes(:, i) = ...
+                conv(FSignal, flipud(conj(RefSeqs(:, i))), "valid");
+        end
+
+    [MaxAbs, Inds] = max(abs(corrRes));
+    [~, FreqOffsetInd] = max(MaxAbs);
+    
+    PackageBeginSample = Inds(FreqOffsetInd);
+
+% Грубая частотная подстройка сигнала
+    SignalTuned1 = FSignal .* ...
+        exp(1j*2*pi*fVals(FreqOffsetInd) * (0:length(FSignal)-1)' * Ts);
+
+% Синхронизация начала пакета по первому отсчёту переменной
+    SignalSync = SignalTuned1(PackageBeginSample:end);
+
+% Выбор модуляционных символов 
+    RxPackageSymbols= SignalSync(1:sps:sps*(PreambleLen+BitsPerPackage/2));
+
+% Точная частотная синхронизация
+    % Принятая синхропоследовательность после грубой подстройки частоты
+        RxPreample = RxPackageSymbols(1:127);
+    
