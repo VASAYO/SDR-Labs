@@ -45,22 +45,19 @@ addpath('../Lib/');
 % Параметры RRC
     beta = 0.5;
     span = 10;
-    sps = 20;
+    sps = 2;
 % Число передаваемых в пакете бит
     BitsPerPackage = 1024;
 % Длина синхропоследовательности
-    PreambleLen = 2^7 - 1;
+    PreLen = 2^7 - 1;
 % Нужно ли сохранять отсчёты сигнала в файл
     NeedSaveTxSignal = 0;
-% Отстройка частоты и фазы сигнала
-    fOffset = (40e3*rand() - 20e3) * 1;
-    phiOffset = 2*pi*rand() - pi;
 % Отношение энергии бита к дисперсии шума, дБ
     EbNo = 10;
 % Энергия бита (QPSK)
     Eb = 1 / log2(4);
 
-% Вычисляемые параметры
+% Вычисляемые/генерируемые параметры
     % Символьная скорость (QPSK)
         BaudRate = BitRate / 2;
     % Частота дискретизации
@@ -69,6 +66,9 @@ addpath('../Lib/');
         Ts = 1/Fs;
     % RRC импульс
         RRC = rcosdesign(beta, span, sps);
+    % Отстройка частоты и фазы сигнала
+        fOffset = (40e3*rand() - 20e3) * 1;
+        phiOffset = 2*pi*rand() - pi;
     % Дисперсия шума
         No = Eb / 10^(EbNo/10);
 
@@ -79,7 +79,7 @@ addpath('../Lib/');
 % Маппинг бит
     Symbols = pskmod(InputData, 4, pi/4, "gray", "InputType", "bit");
 % Синхропоследовательность
-    Preamble = (1 + 1j) * mlseq(PreambleLen);
+    Preamble = (1 + 1j) * mlseq(PreLen);
 
 % Объединение символов информационной последовательности и
 % синхропоследовательности
@@ -93,13 +93,13 @@ addpath('../Lib/');
     if NeedSaveTxSignal
         % Повышение частоты дискретизации до рабочей в SDR
             if Fs < 10e6
-                FreqOffsetInd1 = ResamplingFun(TxSignal, Fs, 10e6);
+                Buf = ResamplingFun(TxSignal, Fs, 10e6);
             else
-                FreqOffsetInd1 = TxSignal;
+                Buf = TxSignal;
             end
 
-        IQ2BinInt8(FreqOffsetInd1, '.\..\Records\Lab_2_TxSig.bin');
-        clear FreqOffsetInd1;
+        IQ2BinInt8(Buf, '.\..\Records\Lab_2_TxSig.bin');
+        clear Buf;
     end
 
 %% Канал передачи
@@ -157,18 +157,18 @@ addpath('../Lib/');
     SignalSync = SignalTuned1(PackageBeginSample:end);
 
 % Выбор модуляционных символов 
-    RxPackageSymbols= SignalSync(1:sps:sps*(PreambleLen+BitsPerPackage/2));
+    RxPackageSymbols= SignalSync(1:sps:sps*(PreLen+BitsPerPackage/2));
 
 % Точная частотная синхронизация
     % Принятая синхропоследовательность после грубой подстройки частоты
-        RxPreamble = RxPackageSymbols(1:127);
+        RxPreamble = RxPackageSymbols(1:PreLen);
 
     % Сетка частотных отстроек
         fVals2 = (0:20:3480/2);
         fVals2 = [fliplr(-fVals2(2:end)) fVals2];
     
     % Набор опорных последовательностей с разными частотными сдвигами
-        RefSeqs2 = zeros(PreambleLen, length(fVals2));
+        RefSeqs2 = zeros(PreLen, length(fVals2));
 
         for i = 1:length(fVals2)
             RefSeqs2(:, i) = Preamble .* ...
@@ -193,14 +193,16 @@ addpath('../Lib/');
 % Синхронизация фазы сигнала
     % Оценка фазы по преамбуле
         PhiEstimate = ...
-            angle(sum(RxPackageSymbolsFreqTuned(1:127) .* conj(Preamble)));
+            angle(sum(RxPackageSymbolsFreqTuned(1:PreLen) .* ...
+            conj(Preamble)));
 
     % Подстройка фазы
         RxPackageSymbolsTuned = RxPackageSymbolsFreqTuned * ...
             exp(-1j * PhiEstimate);
 
 % Демодуляция
-    OutputBits = pskdemod(RxPackageSymbolsTuned(127+1:end), 4, pi/4, "gray", "OutputType", "bit");
+    OutputBits = pskdemod(RxPackageSymbolsTuned(PreLen+1:end), ...
+        4, pi/4, "gray", "OutputType", "bit");
 
 
 %% Результаты
