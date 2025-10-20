@@ -80,7 +80,7 @@ addpath('../Lib/');
 % Нужно ли сохранять отсчёты сигнала в файл
     NeedSaveTxSignal = 0;
 % Отстройка частоты и фазы сигнала
-    fOffset = (40e3*rand() - 20e3) * 0;
+    fOffset = (40e3*rand() - 20e3) * 1;
     phiOffset = 2*pi*rand() - pi;
 % Отношение энергии бита к дисперсии шума, дБ
     EbNo = 10;
@@ -106,11 +106,11 @@ addpath('../Lib/');
 % Маппинг бит
     Symbols = pskmod(InputData, 4, pi/4, "gray", "InputType", "bit");
 % Синхропоследовательность
-    SyncSeq = (1 + 1j) * mlseq(PreambleLen);
+    Preamble = (1 + 1j) * mlseq(PreambleLen);
 
 % Объединение символов информационной последовательности и
 % синхропоследовательности
-    SymbolsPackage = [SyncSeq; Symbols];
+    SymbolsPackage = [Preamble; Symbols];
 
 % Формирование сигнала
     SymbolsPackageUpsampled = upsample(SymbolsPackage, sps);
@@ -120,13 +120,13 @@ addpath('../Lib/');
     if NeedSaveTxSignal
         % Повышение частоты дискретизации до рабочей в SDR
             if Fs < 10e6
-                FreqOffsetInd = ResamplingFun(TxSignal, Fs, 10e6);
+                FreqOffsetInd1 = ResamplingFun(TxSignal, Fs, 10e6);
             else
-                FreqOffsetInd = TxSignal;
+                FreqOffsetInd1 = TxSignal;
             end
 
-        IQ2BinInt8(FreqOffsetInd, '.\..\Records\Lab_2_TxSig.bin');
-        clear FreqOffsetInd;
+        IQ2BinInt8(FreqOffsetInd1, '.\..\Records\Lab_2_TxSig.bin');
+        clear FreqOffsetInd1;
     end
 
 %% Канал передачи
@@ -151,33 +151,34 @@ addpath('../Lib/');
 
 % Поиск НОМЕРА ОТСЧЁТА СИГНАЛА, С КОТОРОГО НАЧИНАЕТСЯ ПАКЕТ
     % Сетка частотных отстроек
-        fVals = (0:3480:20e3);
-        fVals = [fliplr(-fVals(2:end)) fVals];
+        fVals1 = (0:3480:20e3);
+        fVals1 = [fliplr(-fVals1(2:end)) fVals1];
 
     % Набор опорных последовательностей с разными частотными сдвигами
-        RefSeqs = zeros(length(SyncSeq) * sps, length(fVals));
+        RefSeqs1 = zeros(length(Preamble) * sps, length(fVals1));
 
-        for i = 1:length(fVals)
-            RefSeqs(:, i) = upsample(SyncSeq, sps) .* ...
-                exp(1j*2*pi*fVals(i) * (0:length(SyncSeq)*sps-1)' * Ts);
+        for i = 1:length(fVals1)
+            RefSeqs1(:, i) = upsample(Preamble, sps) .* ...
+                exp(1j*2*pi*fVals1(i) * (0:length(Preamble)*sps-1)' * Ts);
         end
         
     % Корреляция принятого сигнала с опорными последовательностями
-        corrRes = zeros(length(FSignal)-size(RefSeqs, 1)+1, length(fVals));
+        corrRes1 = ...
+            zeros(length(FSignal)-size(RefSeqs1, 1)+1, length(fVals1));
 
-        for i = 1:length(fVals)
-            corrRes(:, i) = ...
-                conv(FSignal, flipud(conj(RefSeqs(:, i))), "valid");
+        for i = 1:length(fVals1)
+            corrRes1(:, i) = ...
+                conv(FSignal, flipud(conj(RefSeqs1(:, i))), "valid");
         end
 
-    [MaxAbs, Inds] = max(abs(corrRes));
-    [~, FreqOffsetInd] = max(MaxAbs);
+    [MaxAbs, Inds] = max(abs(corrRes1));
+    [~, FreqOffsetInd1] = max(MaxAbs);
     
-    PackageBeginSample = Inds(FreqOffsetInd);
+    PackageBeginSample = Inds(FreqOffsetInd1);
 
 % Грубая частотная подстройка сигнала
     SignalTuned1 = FSignal .* ...
-        exp(1j*2*pi*fVals(FreqOffsetInd) * (0:length(FSignal)-1)' * Ts);
+        exp(-1j*2*pi*fVals1(FreqOffsetInd1) * (0:length(FSignal)-1)' * Ts);
 
 % Синхронизация начала пакета по первому отсчёту переменной
     SignalSync = SignalTuned1(PackageBeginSample:end);
@@ -187,5 +188,50 @@ addpath('../Lib/');
 
 % Точная частотная синхронизация
     % Принятая синхропоследовательность после грубой подстройки частоты
-        RxPreample = RxPackageSymbols(1:127);
+        RxPreamble = RxPackageSymbols(1:127);
+
+    % Сетка частотных отстроек
+        fVals2 = (0:20:3480/2);
+        fVals2 = [fliplr(-fVals2(2:end)) fVals2];
     
+    % Набор опорных последовательностей с разными частотными сдвигами
+        RefSeqs2 = zeros(PreambleLen, length(fVals2));
+
+        for i = 1:length(fVals2)
+            RefSeqs2(:, i) = Preamble .* ...
+               exp(1j*2*pi*fVals2(i) * (0:length(Preamble)-1)' / BaudRate);
+        end
+
+    % Корреляция принятой преамбулы с набором опорных последовательностей
+        corrRes2 = zeros(1, length(fVals2));
+
+        for i = 1:length(fVals2)
+            corrRes2(i) = sum(RxPreamble .* conj(RefSeqs2(:, i)));
+        end
+
+    % Определение частотной отстройки
+        [~, FreqOffsetInd2] = max(abs(corrRes2));
+
+    % Точная подстройка частоты
+        RxPackageSymbolsFreqTuned = MultiplyOnComplexExp( ...
+            RxPackageSymbols, -fVals2(FreqOffsetInd2), BaudRate ...
+        );
+
+% Синхронизация фазы сигнала
+    % Оценка фазы по преамбуле
+        PhiEstimate = ...
+            angle(sum(RxPackageSymbolsFreqTuned(1:127) .* conj(Preamble)));
+
+    % Подстройка фазы
+        RxPackageSymbolsTuned = RxPackageSymbolsFreqTuned * ...
+            exp(-1j * PhiEstimate);
+
+% Демодуляция
+    OutputBits = pskdemod(RxPackageSymbolsTuned(127+1:end), 4, pi/4, "gray", "OutputType", "bit");
+
+
+%% Результаты
+% Ошибки бит при приёме
+    fprintf('Ошибок бит: %d/%d;\n', sum(OutputBits == InputData), BitsPerPackage);
+
+% Результат неверный. Нужно искать ошибки.
