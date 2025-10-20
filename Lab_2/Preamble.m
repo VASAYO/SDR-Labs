@@ -6,7 +6,7 @@
     % Битовая скорость пакета
         BitRate = 1e6;
     % Длина последоватлеьности
-        MLen = 2^6 - 1;
+        MLen = 2^7 - 1;
     % Диапазон частот, Гц
         fMax = 20e3;
         fMin = -fMax;
@@ -72,5 +72,6 @@
         title('FVals = 0');
 
         figure
-        plot(FVals, abs(SechT0));
+        plot(FVals, 20*log10(abs(SechT0)/max(abs(SechT0))));
         title('Lags = 0');
+        yline(-3);
