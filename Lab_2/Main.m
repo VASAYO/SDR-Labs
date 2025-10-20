@@ -232,6 +232,5 @@ addpath('../Lib/');
 
 %% Результаты
 % Ошибки бит при приёме
-    fprintf('Ошибок бит: %d/%d;\n', sum(OutputBits == InputData), BitsPerPackage);
-
-% Результат неверный. Нужно искать ошибки.
+    fprintf('Ошибочно принятых бит: %d/%d;\n', ...
+        sum(OutputBits ~= InputData), BitsPerPackage);
