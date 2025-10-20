@@ -62,5 +62,89 @@
 %   где фаза phi выбирается из соображения, что начальная фаза преамбулы
 %   известна априори.
 
-clc; close all; clear;
+clc; clear;
+close all;
 addpath('../Lib/');
+
+%% Параметры моделирования
+% Битовая скорость
+    BitRate = 1e6;
+% Параметры RRC
+    beta = 0.5;
+    span = 10;
+    sps = 2;
+% Число передаваемых в пакете бит
+    BitsPerPackage = 1024;
+% Нужно ли сохранять отсчёты сигнала в файл
+    NeedSaveTxSignal = 1;
+% Отстройка частоты и фазы сигнала
+    fOffset = 40e3*rand() - 20e3;
+    phiOffset = 2*pi*rand();
+% Отношение энергии бита к дисперсии шума, дБ
+    EbNo = 10;
+% Энергия бита (QPSK)
+    Eb = 1 / log2(4);
+
+% Вычисляемые параметры
+    % Символьная скорость (QPSK)
+        BaudRate = BitRate / 2;
+    % Частота дискретизации
+        Fs = BaudRate * sps;
+    % Период дискретизации
+        Ts = 1/Fs;
+    % RRC импульс
+        RRC = rcosdesign(beta, span, sps);
+    % Дисперсия шума
+        No = Eb / 10^(EbNo/10);
+
+
+%% Формирование пакета
+% Генерация бит
+    InputData = randi([0 1], BitsPerPackage, 1);
+% Маппинг бит
+    Symbols = pskmod(InputData, 4, pi/4, "gray", "InputType", "bit");
+% Синхропоследовательность
+    SyncSeq = (1 + 1j) * mlseq(2^7 - 1);
+
+% Объединение символов информационной последовательности и
+% синхропоследовательности
+    SymbolsPackage = [SyncSeq; Symbols];
+
+% Формирование сигнала
+    SymbolsPackageUpsampled = upsample(SymbolsPackage, sps);
+    TxSignal = conv(SymbolsPackageUpsampled(1:end-(sps-1)), RRC);
+
+% Сохранение сигнала в файл
+    if NeedSaveTxSignal
+        % Повышение частоты дискретизации до рабочей в SDR
+            if Fs < 10e6
+                Buf = ResamplingFun(TxSignal, Fs, 10e6);
+            else
+                Buf = TxSignal;
+            end
+
+        IQ2BinInt8(Buf, '..\Records\Lab_2_TxSig.bin');
+        clear Buf;
+    end
+
+%% Канал передачи
+% Добавление нулей до и после пакета
+    RxSignal = [zeros(size(TxSignal)); TxSignal; zeros(size(TxSignal))];
+
+% Добавление частотной отстройки и случайной фазы
+    RxSignal = RxSignal .* ...
+        exp(1j*2*pi*fOffset * (0:length(RxSignal)-1).' * Ts);
+    RxSignal = RxSignal * exp(1j * phiOffset);
+
+% Добавление АБГШ
+    % Генерация комплексного шума
+        Noise = randn(length(RxSignal), 2) * [1; 1j];
+        Noise = Noise * sqrt(No/2);
+
+    RxSignal = RxSignal + Noise;
+
+%% Приём и обработка пакета
+% Согласованная фильтрация
+    FSignal = conv(RxSignal, RRC);
+
+% Синхронизация с началом пакета
