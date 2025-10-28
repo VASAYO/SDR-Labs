@@ -30,9 +30,9 @@ function PackIQ = Generate_Package_IQ(Bits, PackNumber, TotalPacks, ...
     end
 
 % Перевод PackNumber, TotalPacks, NumBits в двоичный вид
-    PackNumberBin = int2bit(PackNumber, 14, true);
-    TotalPacksBin = int2bit(TotalPacks, 14, true);
-    NumBitsBin    = int2bit(NumBits, 10, true);
+    PackNumberBin = int2bit(PackNumber-1, 14, true);
+    TotalPacksBin = int2bit(TotalPacks-1, 14, true);
+    NumBitsBin    = int2bit(NumBits-1, 10, true);
 
 % Объединение всех полей в единую битовую последовательность
     PackSeq = [TotalPacksBin; PackNumberBin; NumBitsBin; Bits];
