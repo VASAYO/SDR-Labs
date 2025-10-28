@@ -53,7 +53,6 @@ addpath('..\Lib\');
                                     % комплексных отсчётов соответствующего
                                     % по номеру пакета
     for idx = 1:NumPackages
-        PacksIQ{idx} = Generate_Package_IQ(BitsDivided, idx, ...
+        PacksIQ{idx} = Generate_Package_IQ(BitsDivided{idx}, idx, ...
             NumPackages, beta, span, sps);
-
     end
