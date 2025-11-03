@@ -2,7 +2,7 @@ function IQ2BinInt8(IQ, Path)
 %IQ2BIN Summary of this function goes here
 %   Detailed explanation goes here
 
-if ~isrow(IQ)
+if ~iscolumn(IQ)
     IQ = IQ(:);
 end
 
