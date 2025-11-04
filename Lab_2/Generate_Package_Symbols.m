@@ -25,7 +25,7 @@ function Symbols = Generate_Package_Symbols( ...
 % Перевод PackNumber, TotalPacks, NumBits в двоичный вид
     PackNumberBin = int2bit(PackNumber-1, 14, true);
     TotalPacksBin = int2bit(TotalPacks-1, 14, true);
-    NumBitsBin    = int2bit(NumBits-1, 10, true);
+    NumBitsBin    = int2bit(NumBits-1,    10, true);
 
 % Объединение всех полей в единую битовую последовательность
     PackSeq = [TotalPacksBin; PackNumberBin; NumBitsBin; Data];
