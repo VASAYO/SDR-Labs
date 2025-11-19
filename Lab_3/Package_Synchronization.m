@@ -1,12 +1,27 @@
-function Packages_Offsets = Package_Synchronization(FSignal, sps)
+function [Packages_Offsets, Frequency_Offsets] = ...
+    Package_Synchronization(FSignal, sps, Flag_LoadResFromMat)
 % Функция выполняет синхронизацию с началами пакетов
 % 
 % Входные параметры:
-%   FSignal - сигнал с выхода согласованного фильтра;
-%   sps     - отношение частоты дискретизации и символьной скорости.
+%   FSignal             - сигнал с выхода согласованного фильтра;
+%   sps                 - отношение частоты дискретизации и символьной 
+%                         скорости;
+%   Flag_LoadResFromMat - флаг, указывающий на необходимость быстрой 
+%                         загрузки результата работы функции из .mat файла 
+%                         для случая sps = 2.
 %
 % Выходные параметры:
-%   Packages_Offsets - массив сдвигов до пакетов в сигнале.
+%   Packages_Offsets  - массив сдвигов до пакетов в FSignal.
+%   Frequency_Offsets - массив такой же длины, как и Packages_Offsets, 
+%                       содержащий значения грубых оценок частотных 
+%                       отстроек до пакетов с соответствующими сдвигами.
+
+% Загрузка результата из файла
+    if Flag_LoadResFromMat
+        load("Package_Synchronization_Result.mat", ...
+            "Packages_Offsets", "Frequency_Offsets");
+        return;
+    end
 
 % Длина преамбулы
     PreLen = 127;
@@ -15,6 +30,8 @@ function Packages_Offsets = Package_Synchronization(FSignal, sps)
     FVals = [fliplr(-FVals(2:end)) FVals];
 % Символьная скорость
     Rs = 500e3;
+% Значение порога при поиске пакетов
+    ThresholdVal = 15;
 
 % Частота дискретизации
     Fs = sps * Rs;
@@ -38,4 +55,25 @@ function Packages_Offsets = Package_Synchronization(FSignal, sps)
         corrRes(:, i) = ...
             conv(FSignal, flipud(conj(RefSeqs(:, i))), "valid");
     end
-        1
+
+% Поиск пакетов и их частотных отстроек
+    Processing = abs(corrRes);
+
+    Packages_Offsets = [];
+    Frequency_Offsets = [];
+
+    while sum(corrRes > ThresholdVal, "all") > 0
+        % Поиск номера строчки и столбца максимального значения корреляции
+            [BufMaxByCols, BufIndMaxByCols] = max(Processing);
+            [~, BufFreqOffsetInd] = max(BufMaxByCols);
+
+            Packages_Offsets(end+1) = BufIndMaxByCols(BufFreqOffsetInd);
+            Frequency_Offsets(end+1) = FVals(BufFreqOffsetInd);
+
+        % Зануление найденного максимума
+            Processing(Packages_Offsets(end)-10:Packages_Offsets(end)+10, :) = 0;
+    end
+
+% Сортировка найденных пакетов в порядке возрастания
+    [Packages_Offsets, I] = sort(Packages_Offsets);
+    Frequency_Offsets = Frequency_Offsets(I);
