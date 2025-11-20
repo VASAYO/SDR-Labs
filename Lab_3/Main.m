@@ -108,28 +108,40 @@ addpath('..\Lib\');
 %% Обработка пакетов
 % Массив флагов, указывающий, сошлось ли CRC для соответствующего
 % пакета
-    % isCRCCorrect = false(1, NumPackages);
 
 % Демодуляция бит пакета
     PackageBits = pskdemod(Packages_Symbols(127+1:end, :), 4, pi/4, "gray", ...
         "OutputType", "bit");
 
-% Удаление контрольной суммы и дескрэмблирование
-    Buf = PackageBits(1:end-16, :);
+% Обнаружение ошибок в пакетах
+    [Buf, isErrorInPackage] = crcDetect(PackageBits, crcConfig());
 
-    ScrSeq = (mlseq(2047)+1)/2;
-    ScrSeq = ScrSeq(1:1062);
+% Дескрэмблирование
+    ScrSeq  = (mlseq(2047)+1)/2;
+    ScrSeq  = ScrSeq(1:1062);
     ScrSeqs = repmat(ScrSeq, 1, NumPackages);
-
     BitsPackageDeScr = mod(Buf+ScrSeqs, 2);
 
 % Удаление технических полей
     InfoBits = BitsPackageDeScr(2*14+10+1:end, :);
 
-    InfoBits = InfoBits(:);
+% Имитация повторной передачи пакетов, в которых обнаружены ошибки
+    load("DataDiv.mat");
 
+    % Номера битых пакетов
+        IndErrPacks = find(isErrorInPackage == 1);
+
+    % Повторная передача
+        for i = 1:length(IndErrPacks)
+            InfoBits(:, IndErrPacks(i)) = DataDiv{IndErrPacks(i)};
+        end
+
+% Формирование итоговой битовой последовательности и удаление нулей в конце
+% последнего пакета
+    InfoBits = InfoBits(:);
     InfoBits = InfoBits(1:end-(1024-448));
 
+% Запись результата в файл
     fid = fopen("Res.zip", "w");
     fwrite(fid, InfoBits, "ubit1");
     fclose(fid);
