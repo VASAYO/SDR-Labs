@@ -2,6 +2,7 @@ clc; clear;
 close all;
 
 addpath('..\Lib\');
+addpath("MatFiles\");
 
 %% Параметры
 % Частота излучения сигнала
