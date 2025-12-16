@@ -56,10 +56,11 @@ addpath('..\Lib\');
     % Частота дискретизации, Гц
         Par.Fs = Par.Rs * Par.RRC.SPS;
     % Формирующий импульс
-        RRC = rcosdesign( Par.RRC.Beta, Par.RRC.Span, Par.RRC.SPS );
+        Par.RRC.Impulse = ...
+            rcosdesign( Par.RRC.Beta, Par.RRC.Span, Par.RRC.SPS );
     % Преамбула и филлерные символы
-        Preamble = mlseq( Par.LenPreamble ) * ( 1+1j ) / sqrt( 2 );
-        Fillers  = pskmod( ...
+        Par.Preamble = mlseq( Par.LenPreamble ) * ( 1+1j ) / sqrt( 2 );
+        Par.Fillers  = pskmod( ...
             randi( [0 3], Par.LenFillers, 1 ), Par.Mod.Order, ...
             Par.Mod.PhaseOffset, "gray", "InputType", "integer" ...
         );
@@ -105,12 +106,13 @@ addpath('..\Lib\');
     end
 
 % Добавление преамбулы и филлеров
-    Tx_Symbols = [ Preamble; Fillers; Frames(:) ];
+    Tx_Symbols = [ Par.Preamble; Par.Fillers; Frames(:) ];
 
 % Формирующая фильтрация
     Buf = upsample( Tx_Symbols, Par.RRC.SPS );
-    Tx_Waveform = conv( Buf, RRC );
+    Tx_Waveform = conv( Buf, Par.RRC.Impulse );
 
 % Сохранение сигнала и набора параметров в файл
     IQ2BinInt8( Tx_Waveform, '..\Records\Lab_4_TxWaveform.bin' );
     save( '..\Records\Lab_4_Params.mat', "Par" );
+    save( '..\Records\Lab_4_TxWaveform.mat', "Tx_Waveform" );
