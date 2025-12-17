@@ -58,17 +58,23 @@ addpath('..\Lib\');
     % Формирующий импульс
         Par.RRC.Impulse = ...
             rcosdesign( Par.RRC.Beta, Par.RRC.Span, Par.RRC.SPS );
-    % Преамбула и филлерные символы
+    % Преамбула, филлерные символы, маркер
         Par.Preamble = mlseq( Par.LenPreamble ) * ( 1+1j ) / sqrt( 2 );
         Par.Fillers  = pskmod( ...
             randi( [0 3], Par.LenFillers, 1 ), Par.Mod.Order, ...
             Par.Mod.PhaseOffset, "gray", "InputType", "integer" ...
         );
+        Par.Marker = mlseq( Par.Frame.LenMarker ) * ( 1 + 1j ) / sqrt( 2 );
 
 
 %% Формирование сигнала
 % Передаваемая информационная последовательность
-    TxData = randi( [0 1], Par.Rb * 4 + randi([1 4095]), 1 );
+    fid = fopen( '..\Records\2. Цена алчности.fb2', 'r' );
+    if fid == -1
+        error('Не удалось открыть передаваемый файл в режиме чтения');
+    end
+    TxData = fread( fid, +inf, "ubit1" );
+    fclose( fid );
 
 % Разбиение битовой последовательности на кадры
     % Число кадров
