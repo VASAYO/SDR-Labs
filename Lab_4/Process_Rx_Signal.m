@@ -155,13 +155,7 @@ end
     end
 
 % Формирование итогового переданного файла
-    L = 0;
-    for i = 1:length( RxFramesPayloads )
-        L = L + length( RxFramesPayloads{ i } );
-    end
-
     RxData = [];
-
     for i = 1:length( RxFramesPayloads )
         RxData = [ RxData; RxFramesPayloads{ i } ];
         i
